@@ -1,0 +1,41 @@
+name: Validate knowledge pack
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Read Python version
+        id: python-version
+        shell: bash
+        run: |
+          version="$(awk '$1 == "python" { print $2; exit }' .tool-versions)"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Run validator tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate repository
+        run: python scripts/validate_knowledge.py .

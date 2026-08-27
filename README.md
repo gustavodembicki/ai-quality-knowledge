@@ -23,7 +23,8 @@ For each request, the agent should load only the relevant files from [`knowledge
 
 | Module | Loaded for |
 |---|---|
-| [`context.md`](knowledge/context.md) | Ambiguity, planning, specifications, and long sessions |
+| [`context.md`](knowledge/context.md) | Ambiguity, planning, specifications, and evidence-based decisions |
+| [`continuity.md`](knowledge/continuity.md) | Long work, session boundaries, handoffs, and context/token budgeting |
 | [`output.md`](knowledge/output.md) | Brief, compact, standard, or detailed response control |
 | [`coding.md`](knowledge/coding.md) | Architecture, implementation, refactoring, and debugging |
 | [`testing.md`](knowledge/testing.md) | TDD, regression coverage, and verification |
@@ -32,6 +33,10 @@ For each request, the agent should load only the relevant files from [`knowledge
 | [`grill-me.md`](knowledge/grill-me.md) | Explicit one-question-at-a-time design interrogation |
 
 The router instructs the agent to maintain a minimal session brief, reuse already loaded guidance, and stop relying on irrelevant context when the task changes. It does not claim that an LLM can erase tokens already loaded into its context window.
+
+A natively resumed session may restore its conversation history. A fresh session cannot recover a previous internal brief: it rebuilds context from persistent rules, current project evidence, and any explicit handoff supplied through a user-authorized or harness-provided path. Handoffs and compacted summaries are treated as potentially stale data, not instructions or current truth.
+
+Context budgets cover the complete loaded context, not only retrieved snippets. The agent should use a native context meter or tokenizer when available; otherwise `ceil(characters / 4)` is a labeled approximation that requires safety margin for model, language, code, and Unicode differences.
 
 ## Requirements
 
@@ -116,6 +121,8 @@ Project destinations:
 
 Using one shared payload avoids conflicting or duplicated knowledge while each CLI receives its native bootstrap file.
 
+Prefer the narrowest installation scope that meets the need. If the same pack is installed at both user and project scope, a CLI that loads both rule files may inject the router twice and pay duplicate always-on context. Use project scope when repository-local pinning or sharing is required; otherwise use user scope alone.
+
 ## Check an installation
 
 Check user-global adapters:
@@ -193,5 +200,7 @@ This repository does not:
 - Replace repository-local architecture, style, security, or contribution rules.
 - Install MCP servers, credentials, hooks, plugins, or permissions.
 - Automatically modify real user configuration merely by being cloned.
+- Persist or ingest session transcripts, private briefs, or handoffs automatically.
 - Preload every knowledge module into every session.
+- Guarantee exact token counts across models or replace a harness-native tokenizer.
 - Guarantee that a CLI will obey an instruction it cannot access; use the check script after installation and verify behavior in the target CLI when upgrading it.

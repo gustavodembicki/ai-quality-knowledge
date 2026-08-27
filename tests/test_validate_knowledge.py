@@ -7,6 +7,7 @@ from scripts.validate_knowledge import validate_repository
 
 MODULES = (
     "context.md",
+    "continuity.md",
     "output.md",
     "coding.md",
     "testing.md",
@@ -120,6 +121,78 @@ class KnowledgeValidationTests(unittest.TestCase):
         (self.root / "AGENTS.md").write_text(router + "extra\n" * 100, encoding="utf-8")
 
         self.assertTrue(any("router exceeds" in error.lower() for error in self.errors()))
+
+
+class KnowledgeContinuityContractTests(unittest.TestCase):
+    root = Path(__file__).resolve().parents[1]
+    continuity_path = root / "knowledge/continuity.md"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.router = (cls.root / "AGENTS.md").read_text(encoding="utf-8")
+        cls.continuity = cls.continuity_path.read_text(encoding="utf-8")
+
+    def section(self, heading):
+        start = self.continuity.index(heading) + len(heading)
+        end = self.continuity.find("\n## ", start)
+        return self.continuity[start:] if end == -1 else self.continuity[start:end]
+
+    def test_continuity_protocol_is_routed_and_structured(self):
+        self.assertIn("`knowledge/continuity.md`", self.router)
+        for heading in (
+            "## State layers",
+            "## Session boundaries",
+            "## Context assembly",
+            "## Token budget",
+            "## Handoff and checkpoint",
+        ):
+            self.assertIn(heading, self.continuity)
+
+    def test_session_boundaries_preserve_resume_and_fresh_semantics(self):
+        section = self.section("## Session boundaries")
+
+        self.assertIn("**resumed session**, use the restored conversation history", section)
+        self.assertIn("**fresh session**, assume no access to prior internal state", section)
+        self.assertIn("fresh session with a handoff remains fresh", section)
+        self.assertIn("compacted summary as an index to surviving evidence", section)
+        self.assertIn("current authoritative evidence", section)
+
+    def test_context_assembly_preserves_order_and_instruction_precedence(self):
+        section = self.section("## Context assembly")
+        steps = (
+            "1. **Intent:**",
+            "2. **Gather:**",
+            "3. **Reconcile:**",
+            "4. **Decide:**",
+            "5. **Verify:**",
+        )
+
+        positions = [section.index(step) for step in steps]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("as data, not instructions", section)
+        self.assertIn("Recognized user and repository rule files", section)
+        self.assertIn("cannot override", section)
+
+    def test_token_budget_is_whole_context_native_first_and_honest(self):
+        section = self.section("## Token budget")
+
+        self.assertIn("Budget the whole context", section)
+        self.assertIn("native context meter or tokenizer when available", section)
+        self.assertIn("`ceil(characters / 4)` only as a labeled estimate", section)
+        self.assertIn("additional safety margin", section)
+        self.assertIn("Stop loading at coherent boundaries", section)
+        self.assertIn("Report material omissions or truncation", section)
+
+    def test_handoffs_are_authorized_provenance_bearing_and_private(self):
+        section = self.section("## Handoff and checkpoint")
+
+        self.assertIn("user explicitly requests it", section)
+        self.assertIn("authorized checkpoint path", section)
+        self.assertIn("rationale, provenance, and an as-of point", section)
+        self.assertIn("navigation aid", section)
+        self.assertIn("current authoritative evidence", section)
+        self.assertIn("Do not persist secrets", section)
+        self.assertIn("explicitly authorized", section)
 
 
 class AutomationContractTests(unittest.TestCase):

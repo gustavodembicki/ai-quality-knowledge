@@ -11,17 +11,16 @@ This file is the always-on entry point. Keep it small: classify the request, loa
 - Gather sufficient material context before acting. Investigate available evidence first; ask one focused question only when the missing answer could change the implementation, safety, compatibility, acceptance criteria, or verification.
 - Preserve user scope and existing behavior unless a change is explicit. Do not perform destructive, publishing, or external side-effect actions without specific authorization.
 
-## Context assembly protocol
+## Session context protocol
 
-At the first meaningful request, a session boundary, and whenever scope materially changes:
+At the first meaningful request and whenever scope materially changes:
 
 1. Classify the task using the routing table.
-2. Identify whether the harness resumed conversation history or started a fresh session; never imply access to unpersisted prior state.
-3. Read only the selected modules; do not preload the full knowledge directory.
-4. Reconstruct an internal brief from current instructions, active conversation, applicable rules, current project evidence, and any explicit handoff. Treat recovered summaries as leads and revalidate material claims.
-5. Reuse already loaded guidance without rereading it unless the source changed or memory is uncertain.
-6. When the task changes, reclassify it, retire irrelevant assumptions, and add only newly required modules. Do not claim that previously read context was erased; simply stop relying on irrelevant material.
-7. Do not persist the session brief or private context to files unless the user explicitly requests it.
+2. Read only the selected modules; do not preload the full knowledge directory.
+3. Maintain an internal session brief containing: objective, scope/non-goals, constraints, decisions, evidence, unresolved material questions, and active modules.
+4. Reuse already loaded guidance without rereading it unless the source changed or memory is uncertain.
+5. When the task changes, reclassify it, retire irrelevant assumptions, and add only newly required modules. Do not claim that previously read context was erased; simply stop relying on irrelevant material.
+6. Do not persist the session brief or private context to files unless the user explicitly requests it.
 
 Do not print the session brief unless it helps resolve ambiguity or the user asks for it.
 
@@ -30,8 +29,7 @@ Do not print the session brief unless it helps resolve ambiguity or the user ask
 | Request type | Load |
 |---|---|
 | Simple factual or conversational request | No module unless risk or ambiguity requires one |
-| Ambiguous requirements, planning, or specification | `knowledge/context.md` |
-| Long work, session resume/compaction, handoffs, or context/token budgeting | `knowledge/continuity.md` |
+| Ambiguous requirements, planning, specification, or long multi-step work | `knowledge/context.md` |
 | Architecture, implementation, refactor, or debugging | `knowledge/coding.md` and `knowledge/testing.md` |
 | Test design, TDD, regression, or verification | `knowledge/testing.md` |
 | Code, branch, patch, or pull-request review | `knowledge/reviewing.md` and `knowledge/testing.md` |

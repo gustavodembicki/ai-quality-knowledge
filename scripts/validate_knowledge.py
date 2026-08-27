@@ -7,7 +7,6 @@ from pathlib import Path
 
 REQUIRED_MODULES = (
     "context.md",
-    "continuity.md",
     "output.md",
     "coding.md",
     "testing.md",

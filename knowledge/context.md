@@ -34,27 +34,18 @@ Explore before asking. Never use a question to outsource a codebase search.
 - If ambiguity is immaterial, choose the simplest reversible option and record the assumption concisely.
 - Do not ask for confirmation when evidence already determines the safe path.
 
-## Session working set
+## Decision protocol
 
-Maintain an internal brief with:
+Use an evidence-to-decision loop proportional to the task:
 
-- Objective and current task.
-- Scope and non-goals.
-- Constraints and authoritative rules.
-- Decisions already made and their rationale.
-- Evidence gathered and checks run.
-- Material unknowns and next action.
-- Active knowledge modules.
+1. Frame the outcome, decision, constraints, and proof of success.
+2. Gather the narrowest authoritative evidence that can change the decision.
+3. Reconcile freshness, provenance, conflicts, and affected consumers.
+4. Decide with a concise rationale, separating facts, inferences, assumptions, and unknowns.
+5. Verify the resulting behavior and refresh evidence that may have changed during the work.
 
-Update the brief after a decision, failed assumption, scope change, or verification result. On a major task switch, create a fresh task section and carry forward only explicit user preferences and still-relevant facts.
+Prefer exact local sources before broad or external retrieval. A populated search result is not proof of completeness; expand only when material gaps, weak evidence, or contradictions remain. Never silently choose one source when authoritative evidence conflicts.
 
-## Context budget
-
-- Start from likely entry points; search before reading broad directories or entire documents.
-- Read enough surrounding code to understand contracts, callers, side effects, and tests, not just the edited line.
-- Summarize large evidence into decisions and citations; avoid repeatedly loading raw content.
-- Do not load unrelated knowledge modules “just in case.”
-- Recheck authoritative files and the current diff when a long session may have made earlier observations stale.
-- Never persist secrets, credentials, personal data, or transient session details into the knowledge base.
+For long work, session boundaries, compaction, handoffs, or context/token budgeting, load `knowledge/continuity.md`.
 
 Implementation may begin only when all material context for the current step is known or explicitly accepted as an assumption.

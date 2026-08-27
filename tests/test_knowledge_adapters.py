@@ -18,6 +18,7 @@ from scripts.knowledge_adapters import (
 
 MODULES = (
     "context.md",
+    "continuity.md",
     "output.md",
     "coding.md",
     "testing.md",
@@ -178,6 +179,22 @@ class KnowledgeAdapterTests(unittest.TestCase):
             ),
             "# Existing instructions\n",
         )
+        self.assertEqual(self.check(), [])
+
+    def test_apply_installs_and_manifests_continuity_module(self):
+        self.apply()
+
+        installed = self.home / ".codex/ai-quality-knowledge/knowledge/continuity.md"
+        manifest = json.loads(
+            (self.home / ".codex/ai-quality-knowledge/manifest.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            installed.read_text(encoding="utf-8"),
+            (self.source / "knowledge/continuity.md").read_text(encoding="utf-8"),
+        )
+        self.assertIn("knowledge/continuity.md", manifest["files"])
         self.assertEqual(self.check(), [])
 
     def test_apply_is_idempotent(self):

@@ -1,6 +1,6 @@
 # AI Quality Knowledge
 
-A vendor-neutral quality contract for AI coding agents, with safe adapters for Codex, Claude Code, and Devin CLI.
+A vendor-neutral quality contract for AI coding agents, with safe adapters for Codex, Claude Code, Devin CLI, and pi.
 
 ## Intent
 
@@ -72,7 +72,7 @@ python3 scripts/apply_knowledge.py \
   --dry-run
 ```
 
-Choose one tool with `--tool codex`, `--tool claude`, or `--tool devin`.
+Choose one tool with `--tool codex`, `--tool claude`, `--tool devin`, or `--tool pi`.
 
 ## Install for the current user
 
@@ -89,6 +89,7 @@ Native destinations are used:
 | Codex | `$CODEX_HOME/AGENTS.md`, defaulting to `~/.codex/AGENTS.md` | `$CODEX_HOME/ai-quality-knowledge/` |
 | Claude Code | `~/.claude/CLAUDE.md` | `~/.claude/ai-quality-knowledge/` |
 | Devin CLI | `$XDG_CONFIG_HOME/devin/AGENTS.md`, defaulting to `~/.config/devin/AGENTS.md` | The adjacent `ai-quality-knowledge/` directory |
+| pi | `$PI_CODING_AGENT_DIR/AGENTS.md`, defaulting to `~/.pi/agent/AGENTS.md` | `$PI_CODING_AGENT_DIR/ai-quality-knowledge/` |
 
 On Windows, Devin uses `%APPDATA%/devin/` when `XDG_CONFIG_HOME` is not set.
 
@@ -115,13 +116,15 @@ python3 scripts/apply_knowledge.py \
 
 Project destinations:
 
-- Codex and Devin share `<project>/AGENTS.md`.
+- Codex, Devin, and pi share `<project>/AGENTS.md`.
 - Claude uses `<project>/CLAUDE.md`.
-- All three share `<project>/.ai-quality-knowledge/` for copied neutral modules.
+- All four share `<project>/.ai-quality-knowledge/` for copied neutral modules.
 
 Using one shared payload avoids conflicting or duplicated knowledge while each CLI receives its native bootstrap file.
 
-Prefer the narrowest installation scope that meets the need. If the same pack is installed at both user and project scope, a CLI that loads both rule files may inject the router twice and pay duplicate always-on context. Use project scope when repository-local pinning or sharing is required; otherwise use user scope alone.
+Prefer the narrowest installation scope that meets the need. If the same pack is installed at both user and project scope, a CLI that loads both rule files may inject the router twice and pay duplicate always-on context. Pi concatenates its global context file with context files found from the project directory through its ancestors, so this duplication applies directly to pi. Use project scope when repository-local pinning or sharing is required; otherwise use user scope alone.
+
+Pi loads `AGENTS.override.md` before `AGENTS.md` in the same directory. Apply refuses a pi target when that override would shadow the managed router, and check reports the target as non-loadable; it never changes the user-owned override. After applying while pi is running, use `/reload` or restart pi. Pi cannot load this pack when started with `--no-context-files` (`-nc`).
 
 ## Check an installation
 
@@ -164,7 +167,7 @@ Apply and check project scope separately when project-local adapters are used.
 - Reapplying replaces only managed content and does not overwrite the original backup.
 - Writes are atomic.
 - SHA-256 manifests detect source or installed-content drift.
-- Codex and Devin project installs are deduplicated automatically.
+- Codex, Devin, and pi project installs are deduplicated automatically.
 - `--dry-run` performs no writes.
 - A non-empty payload directory without a migration manifest is rejected.
 - `--force` adopts such a directory but does not delete its unknown files.
@@ -203,4 +206,4 @@ This repository does not:
 - Persist or ingest session transcripts, private briefs, or handoffs automatically.
 - Preload every knowledge module into every session.
 - Guarantee exact token counts across models or replace a harness-native tokenizer.
-- Guarantee that a CLI will obey an instruction it cannot access; use the check script after installation and verify behavior in the target CLI when upgrading it.
+- Guarantee that a CLI will obey an instruction it cannot access; disabled context loading, shadowing rules, and model compliance remain harness concerns. Use the check script after installation and verify behavior in the target CLI when upgrading it.

@@ -10,6 +10,7 @@ from scripts.knowledge_adapters import (
     BEGIN_MARKER,
     END_MARKER,
     MigrationError,
+    TOOLS,
     apply_knowledge,
     check_knowledge,
     resolve_targets,
@@ -75,7 +76,7 @@ class KnowledgeAdapterTests(unittest.TestCase):
 
     def test_user_targets_use_native_instruction_files(self):
         targets = resolve_targets(
-            ("codex", "claude", "devin"),
+            ("codex", "claude", "devin", "pi"),
             "user",
             home=self.home,
             project=self.project,
@@ -89,14 +90,20 @@ class KnowledgeAdapterTests(unittest.TestCase):
             by_tool["devin"].instruction_file,
             self.home / ".config/devin/AGENTS.md",
         )
+        self.assertEqual(by_tool["pi"].instruction_file, self.home / ".pi/agent/AGENTS.md")
+        self.assertEqual(
+            by_tool["pi"].payload_directory,
+            self.home / ".pi/agent/ai-quality-knowledge",
+        )
 
-    def test_user_targets_honor_codex_and_xdg_homes(self):
+    def test_user_targets_honor_codex_xdg_and_pi_homes(self):
         environment = {
             "CODEX_HOME": str(self.root / "codex-home"),
             "XDG_CONFIG_HOME": str(self.root / "xdg"),
+            "PI_CODING_AGENT_DIR": str(self.root / "pi-home"),
         }
         targets = resolve_targets(
-            ("codex", "devin"),
+            ("codex", "devin", "pi"),
             "user",
             home=self.home,
             project=self.project,
@@ -111,6 +118,10 @@ class KnowledgeAdapterTests(unittest.TestCase):
         self.assertEqual(
             by_tool["devin"].instruction_file,
             self.root / "xdg/devin/AGENTS.md",
+        )
+        self.assertEqual(
+            by_tool["pi"].instruction_file,
+            self.root / "pi-home/AGENTS.md",
         )
 
     def test_user_target_honors_windows_appdata(self):
@@ -127,9 +138,9 @@ class KnowledgeAdapterTests(unittest.TestCase):
             self.root / "appdata/devin/AGENTS.md",
         )
 
-    def test_project_targets_share_codex_and_devin_installation(self):
+    def test_project_targets_share_codex_devin_and_pi_installation(self):
         targets = resolve_targets(
-            ("codex", "claude", "devin"),
+            ("codex", "claude", "devin", "pi"),
             "project",
             home=self.home,
             project=self.project,
@@ -139,7 +150,7 @@ class KnowledgeAdapterTests(unittest.TestCase):
         self.assertEqual(len(targets), 2)
         shared = next(target for target in targets if target.instruction_file.name == "AGENTS.md")
         claude = next(target for target in targets if target.instruction_file.name == "CLAUDE.md")
-        self.assertEqual(shared.tools, ("codex", "devin"))
+        self.assertEqual(shared.tools, ("codex", "devin", "pi"))
         self.assertEqual(claude.tools, ("claude",))
         self.assertEqual(shared.payload_directory, self.project / ".ai-quality-knowledge")
         self.assertEqual(claude.payload_directory, shared.payload_directory)
@@ -147,7 +158,7 @@ class KnowledgeAdapterTests(unittest.TestCase):
     def test_project_install_preserves_both_instruction_files_and_checks_cleanly(self):
         self.write(self.project / "AGENTS.md", "# Existing agents\n")
         self.write(self.project / "CLAUDE.md", "# Existing Claude\n")
-        tools = ("codex", "claude", "devin")
+        tools = TOOLS
 
         self.apply(tools=tools, scope="project")
 
@@ -180,6 +191,51 @@ class KnowledgeAdapterTests(unittest.TestCase):
             "# Existing instructions\n",
         )
         self.assertEqual(self.check(), [])
+
+    def test_pi_apply_preserves_existing_instructions_and_checks_cleanly(self):
+        instruction_file = self.home / ".pi/agent/AGENTS.md"
+        self.write(instruction_file, "# Existing pi instructions\n")
+
+        self.apply(tools=("pi",))
+
+        content = instruction_file.read_text(encoding="utf-8")
+        self.assertIn("# Existing pi instructions", content)
+        self.assertEqual(content.count(BEGIN_MARKER), 1)
+        self.assertEqual(self.check(tools=("pi",)), [])
+
+    def test_pi_override_shadowing_is_rejected_without_modifying_override(self):
+        override_file = self.home / ".pi/agent/AGENTS.override.md"
+        self.write(override_file, "# User-owned pi override\n")
+
+        with self.assertRaisesRegex(MigrationError, "shadow"):
+            self.apply(tools=("pi",))
+
+        self.assertEqual(
+            override_file.read_text(encoding="utf-8"),
+            "# User-owned pi override\n",
+        )
+        self.assertFalse((self.home / ".pi/agent/AGENTS.md").exists())
+        self.assertTrue(
+            any("shadow" in error.lower() for error in self.check(tools=("pi",)))
+        )
+
+    def test_all_tool_apply_preflights_pi_shadowing_before_writing(self):
+        self.write(self.home / ".pi/agent/AGENTS.override.md", "# Override\n")
+
+        with self.assertRaisesRegex(MigrationError, "shadow"):
+            self.apply(tools=TOOLS)
+
+        self.assertFalse((self.home / ".codex/AGENTS.md").exists())
+        self.assertFalse((self.home / ".claude/CLAUDE.md").exists())
+        self.assertFalse((self.home / ".config/devin/AGENTS.md").exists())
+
+    def test_project_pi_override_shadowing_is_rejected(self):
+        self.write(self.project / "AGENTS.override.md", "# Project override\n")
+
+        with self.assertRaisesRegex(MigrationError, "shadow"):
+            self.apply(tools=("pi",), scope="project")
+
+        self.assertFalse((self.project / "AGENTS.md").exists())
 
     def test_apply_installs_and_manifests_continuity_module(self):
         self.apply()
@@ -323,19 +379,23 @@ class KnowledgeAdapterTests(unittest.TestCase):
         self.assertEqual(self.check(), [])
 
     def test_all_user_installations_are_independently_valid(self):
-        tools = ("codex", "claude", "devin")
+        self.apply(tools=TOOLS)
 
-        self.apply(tools=tools)
-
-        self.assertEqual(self.check(tools=tools), [])
+        self.assertEqual(self.check(tools=TOOLS), [])
         self.assertTrue((self.home / ".codex/AGENTS.md").is_file())
         self.assertTrue((self.home / ".claude/CLAUDE.md").is_file())
         self.assertTrue((self.home / ".config/devin/AGENTS.md").is_file())
+        self.assertTrue((self.home / ".pi/agent/AGENTS.md").is_file())
 
     def test_apply_and_check_clis_work_with_isolated_home(self):
         repository = Path(__file__).resolve().parents[1]
         environment = os.environ.copy()
-        for variable in ("CODEX_HOME", "XDG_CONFIG_HOME", "APPDATA"):
+        for variable in (
+            "CODEX_HOME",
+            "XDG_CONFIG_HOME",
+            "APPDATA",
+            "PI_CODING_AGENT_DIR",
+        ):
             environment.pop(variable, None)
         common_arguments = [
             "--tool",

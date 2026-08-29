@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-TOOLS = ("codex", "claude", "devin")
+TOOLS = ("codex", "claude", "devin", "pi")
 BEGIN_MARKER = "<!-- ai-quality-knowledge:begin -->"
 END_MARKER = "<!-- ai-quality-knowledge:end -->"
 MANIFEST_NAME = "manifest.json"
@@ -63,6 +63,11 @@ def resolve_targets(tools, scope, *, home, project, environment=None):
             elif tool == "claude":
                 config_directory = home / ".claude"
                 instruction_file = config_directory / "CLAUDE.md"
+            elif tool == "pi":
+                config_directory = Path(
+                    environment.get("PI_CODING_AGENT_DIR", home / ".pi/agent")
+                ).expanduser().absolute()
+                instruction_file = config_directory / "AGENTS.md"
             else:
                 if environment.get("XDG_CONFIG_HOME"):
                     config_directory = (
@@ -246,6 +251,18 @@ def apply_target(target, router, modules, *, dry_run, force):
     return changes
 
 
+def target_loadability_errors(target):
+    if "pi" not in target.tools:
+        return []
+    override_path = target.instruction_file.with_name("AGENTS.override.md")
+    if not override_path.is_file():
+        return []
+    return [
+        f"Pi instruction file is shadowed by {override_path}: "
+        f"{target.instruction_file} would not load"
+    ]
+
+
 def apply_knowledge(
     source_root,
     tools,
@@ -258,14 +275,23 @@ def apply_knowledge(
     force=False,
 ):
     router, modules = read_source(source_root)
-    changes = []
-    for target in resolve_targets(
+    targets = resolve_targets(
         tools,
         scope,
         home=home,
         project=project,
         environment=environment,
-    ):
+    )
+    loadability_errors = [
+        error
+        for target in targets
+        for error in target_loadability_errors(target)
+    ]
+    if loadability_errors:
+        raise MigrationError("; ".join(loadability_errors))
+
+    changes = []
+    for target in targets:
         changes.extend(
             apply_target(target, router, modules, dry_run=dry_run, force=force)
         )
@@ -333,5 +359,6 @@ def check_knowledge(
         project=project,
         environment=environment,
     ):
+        errors.extend(target_loadability_errors(target))
         errors.extend(check_target(target, router, modules))
     return errors
